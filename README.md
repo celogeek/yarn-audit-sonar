@@ -1,0 +1,2 @@
+# yarn-audit-sonar
+

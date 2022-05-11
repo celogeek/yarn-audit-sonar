@@ -10,6 +10,9 @@
     "type": "git",
     "url": "https://git.celogeek.com/celogeek/yarn-audit-sonar.git"
   },
+  "bin": {
+    "yarn-audit-sonar": "index.js"
+  },
   "author": "Celogeek",
   "license": "ISC",
   "dependencies": {

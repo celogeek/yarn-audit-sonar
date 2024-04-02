@@ -43,16 +43,17 @@ function yarnLockRange(yarnLock, moduleName, version) {
 const yarnLock = parseYarnLock();
 
 const severities = {
-  info: 'INFO',
-  low: 'MINOR',
-  moderate: 'MINOR',
-  high: 'CRITICAL',
-  critical: 'BLOCKER',
+  info: 'LOW',
+  low: 'LOW',
+  moderate: 'MEDIUM',
+  high: 'MEDIUM',
+  critical: 'HIGH',
 };
 
 const resolvedIds = new Set();
 const stats = {};
-let firstLine = true;
+const rules = []
+const issues = []
 
 function processRow(row) {
   if (!row) return;
@@ -60,43 +61,57 @@ function processRow(row) {
   if (type !== 'auditAdvisory') return;
   const {advisory, resolution} = data;
   if (resolvedIds.has(resolution.id)) return;
+  resolvedIds.add(resolution.id);
 
   const [mainVersion, ...otherVersions] = new Set(advisory.findings.map((f) => f.version));
+  rules.push({
+    id: resolution.id.toString(),
+    name: advisory.github_advisory_id || advisory.npm_advisory_id || `rule_${resolution.id.toString()}`,
+    description: `<h1>${advisory.module_name} ${advisory.vulnerable_versions}</h1>
+<h2>${advisory.title || ''}</h2>
 
-  if (!firstLine) {
-    process.stdout.write(',');
-  } else {
-    firstLine = false;
-  }
-  process.stdout.write(JSON.stringify({
-    engineId: 'yarn-audit',
+Overview:
+<pre>
+${advisory.overview || ''}
+</pre>
+
+References:
+<pre>
+${advisory.references || ''}
+</pre>
+`,
+    cleanCodeAttribute: "TRUSTWORTHY",
+    engineId: "pnpm-audit",
+    impacts: [{
+      softwareQuality: "SECURITY",
+      severity: severities[advisory.severity],
+    }]
+  })
+  issues.push({
     ruleId: resolution.id.toString(),
-    severity: severities[advisory.severity] || 'INFO',
-    type: 'VULNERABILITY',
     efforMinutes: 0,
     primaryLocation: {
-      'message': advisory.overview,
+      'message': advisory.title,
       'filePath': 'yarn.lock',
       'textRange': yarnLockRange(yarnLock, advisory.module_name, mainVersion),
     },
     secondaryLocations: otherVersions.map((version) => {
       return {
-        'message': advisory.overview,
+        'message': advisory.title,
         'filePath': 'yarn.lock',
         'textRange': yarnLockRange(yarnLock, advisory.module_name, version),
       };
     }),
-  }));
+  });
   stats[advisory.severity] = (stats[advisory.severity] || 0) + 1;
 }
 
-process.stdout.write('{"issues":[');
 process
   .stdin
   .pipe(split())
   .on('data', processRow)
   .on('end', () => {
-    process.stdout.write(']}\n');
+    console.log(JSON.stringify({rules, issues}))
     const out = [];
     let total = 0;
     for(const [k,v] of Object.entries(stats)) {

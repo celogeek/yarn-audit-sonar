@@ -81,7 +81,7 @@ ${advisory.references || ''}
 </pre>
 `,
     cleanCodeAttribute: "TRUSTWORTHY",
-    engineId: "pnpm-audit",
+    engineId: "yarn-audit",
     impacts: [{
       softwareQuality: "SECURITY",
       severity: severities[advisory.severity],
